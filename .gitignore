@@ -1,0 +1,33 @@
+# Virtual Environment
+.venv/
+venv/
+*/.venv/
+*/venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE/Editor specific
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.spec
+
+# Local database file (we'll configure this later)
+*.sqlite
+*.db
+
+# Log files
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
