@@ -1,0 +1,31 @@
+[project]
+name = "kindle_insights"
+version = "0.1.0"
+description = "Manage and analyze Kindle highlights from MyClippings.txt"
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT" 
+authors = [
+  {name = "Tawanda Moyo", email = "moyotawanda@gmail.com"},
+]
+dependencies = [
+    "sqlalchemy>=1.4",
+    "python-dateutil",
+    "fuzzywuzzy",
+    "python-Levenshtein",
+    "typer[all]>=0.9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "alembic",
+]
+
+[tool.setuptools.packages.find]
+where = ["backend"]
+include = ["app*"]
+
+# Define command-line scripts
+[project.scripts]
+nova = "app.main:cli_app" # Command name = module:typer_app_variable
