@@ -16,15 +16,21 @@ logger = logging.getLogger(__name__)
 LINE1_PATTERN = re.compile(r"^(.*?)(?:\s+\(([^)]+)\))?$")
 
 # Line 2: Metadata (Type, Page, Location, Date)
+# Revised LINE2_PATTERN (Place this in backend/app/parsing/parser.py)
 LINE2_PATTERN = re.compile(
     r"^\-\s+Your\s+"
     r"(Highlight|Note|Bookmark)" # Clipping Type (Group 1)
-    r"(?:\s+\((?:.*?)\))?" # Optional color like (yellow) - non-capturing
-    r"(?:\s+on\s+page\s+(\d+[\-\d]*))?" # Optional Page (Group 2)
-    r"(?:\s*\|\s*)?" # Optional separator
-    r"(?:Location\s+([\d\-]+))?" # Optional Location (Group 3)
-    r"(?:\s*\|\s*)?" # Optional separator
-    r"Added\s+on\s+(.*?)$" # Date string (Group 4)
+    r"\s+" # Space after type is mandatory
+    # EITHER 'on page P [| Location L]' OR just 'on Location L'
+    r"(?:" # Start non-capturing group for metadata options
+      # Option 1: Page is present (Location is optional after page)
+      r"(?:on\s+page\s+(\d+[\-\d]*))" # Page (Group 2)
+      r"(?:\s*\|\s*Location\s+([\d\-]+))?" # Optional Location following Page (Group 3)
+    r"|" # OR
+      # Option 2: Only Location is present
+      r"(?:on\s+Location\s+([\d\-]+))" # Just Location (Group 4) - MUST have 'on' here based on samples
+    r")" # End non-capturing group for metadata options
+    r"\s*\|\s*Added\s+on\s+(.*?)$" # Separator '|', 'Added on', and Date string (Group 5)
 )
 
 DELIMITER = "=========="
@@ -106,7 +112,7 @@ def parse_clippings_file(file_path: str) -> List[Dict[str, Any]]:
         elif line:
             current_clipping_lines.append(line)
             
-    logger.info(f"Parsing completee for {file_path}")
+    logger.info(f"Parsing complete for {file_path}")
     logger.info(f"Total entries: {entry_count}, Processed: {processed_count}, Skipped: {skipped_count}")
     
     return parsed_clippings
@@ -135,7 +141,10 @@ def parse_entry(entry_lines: List[str]) -> Optional[Dict[str, Any]]:
     clipping_type = line2_match.group(1).strip()
     page = line2_match.group(2).strip() if line2_match.group(2) else None
     location = line2_match.group(3).strip() if line2_match.group(3) else None
-    date_str = line2_match.group(4).strip()
+    location2 = line2_match.group(4).strip() if line2_match.group(4) else None
+    date_str = line2_match.group(5).strip()
+    
+    location= location if page else location2
     
     # Parse date -> naive date 
     try:
