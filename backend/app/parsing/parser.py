@@ -168,7 +168,7 @@ def parse_entry(entry_lines: List[str]) -> Optional[Dict[str, Any]]:
         "clipping_type": clipping_type,
         "page": page,
         "location": location,
-        "date": clipping_date,
+        "clipping_date": clipping_date,
         "content": content,
         "content_hash": content_hash
     }
