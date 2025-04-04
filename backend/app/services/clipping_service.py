@@ -96,18 +96,28 @@ def import_clippings(db: Session, file_path: str) -> Dict[str, int]:
                 continue # Skip adding this duplicate
 
             # 3. Create and Add New Clipping record
-            new_clipping = models.Clipping(
-                book_id=book.id,
-                clipping_type=clipping_data["clipping_type"],
-                location=clipping_data["location"],
-                page=clipping_data["page"],
-                clipping_date=clipping_data["clipping_date"],
-                content=clipping_data["content"],
-                content_hash=clipping_data["content_hash"]
-                # sentiment_score is null initially
-            )
-            db.add(new_clipping)
-            added_count += 1
+            try:
+                new_clipping = models.Clipping(
+                    book_id=book.id,
+                    clipping_type=clipping_data["clipping_type"],
+                    location=clipping_data["location"],
+                    page=clipping_data["page"],
+                    clipping_date=clipping_data["clipping_date"],
+                    content=clipping_data["content"],
+                    content_hash=clipping_data["content_hash"]
+                    # sentiment_score is null initially
+                )
+                db.add(new_clipping)
+                added_count += 1
+            
+            except KeyError as ke:
+                logger.error(f"KeyError creating Clipping object: Missing key {ke}. Data: {clipping_data}", exc_info=False)
+                # Propagate the error count from the outer loop's except block or handle here
+                # Let the outer loop handle rollback and error counting for simplicity now.
+                raise # Re-raise to be caught by the outer loop's generic Exception handler
+                # except Exception as creation_e: # Catch other potential creation errors
+                #      logger.error(f"Error creating Clipping object: {creation_e}. Data: {clipping_data}", exc_info=True)
+                #      raise # Re-raise
 
             # Optional: Flush periodically for large files? Maybe not needed for typical MyClippings sizes.
             # if added_count % 500 == 0:
@@ -122,7 +132,12 @@ def import_clippings(db: Session, file_path: str) -> Dict[str, int]:
             error_count += 1
             # Important: Rollback changes potentially added in this iteration's try block
             db.rollback()
-            # We continue to the next clipping
+            continue
+        
+    # Debugging: print dict and its keys before access
+    logger.debug(f"DEBUG: Processing clipping_data: {clipping_data}")
+    logger.debug(f"DEBUG: Keys in clipping_data: {clipping_data.keys()}")
+    
 
     # Final commit for all additions in this import run
     try:
