@@ -186,10 +186,14 @@ def import_clippings(db: Session, file_path: str) -> Dict[str, int]:
 def list_books(db: Session) -> List[models.Book]:
     """Lists all unique books."""
     logger.info("Fetching list of all books.")
-    # TODO: Implement query
-    # return db.query(models.Book).order_by(models.Book.author, models.Book.title).all()
-    pass # Placeholder
-
+    try:
+        # Query all books, order them for consistency
+        books = db.query(models.Book).order_by(models.Book.author, models.Book.title).all()
+        return books
+    except Exception as e:
+        logger.error(f"Failed to fetch books: {e}", exc_info=True)
+        return []
+    
 def get_clippings_for_book(db: Session, book_id: int) -> List[models.Clipping]:
     """Gets all clippings for a specific book ID."""
     logger.info(f"Fetching clippings for book_id: {book_id}")
