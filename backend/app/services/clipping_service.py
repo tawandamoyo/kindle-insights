@@ -68,6 +68,9 @@ def import_clippings(db: Session, file_path: str) -> Dict[str, int]:
     duplicate_count = 0
     error_count = 0
     processed_count = len(parsed_data)
+    
+    # Track items added in this session to avoid duplicate processing
+    session_added_signatures = set()
 
     # Keep track of books processed in this session to potentially reduce queries, although get_or_create handles caching via Session
     # book_cache = {} # Optional optimization
@@ -81,19 +84,32 @@ def import_clippings(db: Session, file_path: str) -> Dict[str, int]:
                  logger.error(f"Skipping clipping #{idx+1} due to missing or invalid book ID for '{clipping_data['book_title']}'")
                  error_count += 1
                  continue
+             
+            # Create a unique signature for the clipping to track in this session
+            signature = (
+                book.id,
+                clipping_data["clipping_type"],
+                clipping_data["location"],
+                clipping_data["content_hash"] # None for bookmarks
+            )
 
             # 2. Check for Duplicate Clipping using the unique constraint criteria
             # (book_id, clipping_type, location, content_hash)
             existing_clipping = db.query(models.Clipping.id).filter_by( # Only query for ID for efficiency
-                book_id=book.id,
-                clipping_type=clipping_data["clipping_type"],
-                location=clipping_data["location"], # Note: relies on exact location string match
-                content_hash=clipping_data["content_hash"] # None for bookmarks
-            ).first()
+                book_id=signature[0],
+                clipping_type=signature[1],
+                location=signature[2],
+                content_hash=signature[3]
+            ).first() 
+            
+            is_pending_dublicate = signature in session_added_signatures
 
-            if existing_clipping:
+            if existing_clipping or is_pending_dublicate:
                 duplicate_count += 1
                 continue # Skip adding this duplicate
+            
+            # Add signature to session tracker BEFORE adding the object
+            session_added_signatures.add(signature)
 
             # 3. Create and Add New Clipping record
             try:
@@ -150,11 +166,13 @@ def import_clippings(db: Session, file_path: str) -> Dict[str, int]:
         error_count += added_count # Count previously 'added' items as errors now
         added_count = 0
         db.rollback()
-
+        
+        
+    actual_duplicates = processed_count - added_count - error_count
     summary = {
         "processed": processed_count,
         "added": added_count,
-        "duplicates": duplicate_count + (processed_count - added_count - error_count - duplicate_count), # Adjust duplicates based on final counts
+        "duplicates": max(0, actual_duplicates), # Ensure non-negative
         "errors": error_count
     }
      # Ensure calculated duplicates isn't negative if errors caused discrepancies
