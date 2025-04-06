@@ -2,7 +2,10 @@ import typer
 import logging
 from typing_extensions import Annotated, Optional # Use typing_extensions for older Python versions if needed, otherwise use typing
 from sqlalchemy.orm import Session
-from pathlib import Path  # Import Path for type hinting
+from pathlib import Path 
+
+from rich.console import Console
+from rich.table import Table
 
 from app.database.database import SessionLocal, init_db, engine # Import engine if needed directly
 from app.services import clipping_service # Import the service module
@@ -64,12 +67,37 @@ def ingest(
             db_session.close()
 
 
-# Add placeholders for other commands later
 @cli_app.command()
 def list_books():
     """Lists all unique books in the library."""
-    typer.echo("Listing books... (Not Implemented Yet)")
-    # TODO: Implement call to clipping_service.list_books
+    typer.echo("Listing books...")
+    db: Session = next(get_db_session())
+    books : List[models.Book] = [] 
+    
+    try:
+        books = clipping_service.list_books(db=db)
+        
+        if not books:
+            console.print("No books found in the library. Use 'ingest' to add clippings.")
+            raise typer.Exit(code=0)
+        
+        # Make nice table using Rich
+        table = Table(title="Your Kindle Library", show_header=True, header_style="bold magenta")
+        table.add_column("ID", style="dim", width=6, justify="right")
+        table.add_column("Title", style="cyan", no_wrap=False)
+        table.add_column("Author", style="green", no_wrap=False)
+        
+        for book in books:
+            author_display = book.author if book.author else "Unknown"
+            table.add_row(str(book.id), book.title, author_display)
+            
+        console.print(table)
+        
+    except Exception as e:
+        logger.error(f"An unexpected error occurred while listing books: {e}", exc_info=True)
+        console.print(f"[bold red]An unexpected error occurred while listing books: {e}[/]", style="red")
+    finally:
+        db.close()
 
 @cli_app.command()
 def show_highlights(book_query: str = typer.Argument(..., help="ID, Title, or Author query for the book.")):
