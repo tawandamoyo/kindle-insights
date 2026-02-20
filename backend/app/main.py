@@ -1,5 +1,6 @@
 import typer
 import logging
+from typing import List
 from typing_extensions import Annotated, Optional # Use typing_extensions for older Python versions if needed, otherwise use typing
 from sqlalchemy.orm import Session
 from pathlib import Path 
@@ -9,6 +10,7 @@ from rich.table import Table
 
 from app.database.database import SessionLocal, init_db, engine # Import engine if needed directly
 from app.services import clipping_service # Import the service module
+from app.database import models
 
 # Configure logging level (optional, can be configured elsewhere)
 logging.basicConfig(level=logging.INFO)
@@ -16,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 # Create the Typer application
 cli_app = typer.Typer(help="Kindle Insights CLI - Manage your Kindle clippings.")
+console = Console()
 
 # Database Dependency (Context Manager) for CLI commands
 # Ensures the session is closed even if errors occur
