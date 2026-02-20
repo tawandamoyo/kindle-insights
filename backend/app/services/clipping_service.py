@@ -1,5 +1,7 @@
 import logging
+import random
 from typing import Dict, Optional, List # Added List import
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
@@ -193,24 +195,34 @@ def list_books(db: Session) -> List[models.Book]:
     except Exception as e:
         logger.error(f"Failed to fetch books: {e}", exc_info=True)
         return []
+
+def find_book(db: Session, query: str) -> Optional[models.Book]:
+    """Finds a book by ID, title, or author."""
+    if query.isdigit():
+        return db.query(models.Book).filter(models.Book.id == int(query)).first()
     
+    search_query = f"%{query}%"
+    return db.query(models.Book).filter(
+        or_(
+            models.Book.title.ilike(search_query),
+            models.Book.author.ilike(search_query)
+        )
+    ).first()
+
 def get_clippings_for_book(db: Session, book_id: int) -> List[models.Clipping]:
     """Gets all clippings for a specific book ID."""
     logger.info(f"Fetching clippings for book_id: {book_id}")
-    # TODO: Implement query
-    # return db.query(models.Clipping).filter(models.Clipping.book_id == book_id).order_by(models.Clipping.clipping_date).all() # Or order by location
-    pass # Placeholder
+    return db.query(models.Clipping).filter(models.Clipping.book_id == book_id).order_by(models.Clipping.location).all()
 
 def get_random_clipping(db: Session, book_id: Optional[int] = None) -> Optional[models.Clipping]:
     """Gets a random clipping, optionally filtered by book ID."""
     logger.info(f"Fetching random clipping. Book filter ID: {book_id}")
-    # TODO: Implement query (Random selection in SQL can be tricky/DB specific)
-    # import random
-    # query = db.query(models.Clipping)
-    # if book_id:
-    #     query = query.filter(models.Clipping.book_id == book_id)
-    # count = query.count()
-    # if count > 0:
-    #     return query.offset(random.randint(0, count - 1)).first()
-    # return None
-    pass # Placeholder
+    query = db.query(models.Clipping)
+    if book_id:
+        query = query.filter(models.Clipping.book_id == book_id)
+    
+    count = query.count()
+    if count > 0:
+        offset = random.randint(0, count - 1)
+        return query.offset(offset).first()
+    return None
