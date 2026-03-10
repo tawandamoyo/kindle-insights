@@ -149,8 +149,11 @@ def show_highlights(book_query: str = typer.Argument(..., help="ID, Title, or Au
         db.close()
 
 @cli_app.command(name="random")
-def random_quote(book_query: Optional[str] = typer.Option(None, "--book", "-b", help="Filter by book ID, Title, or Author.")):
-    """Displays a random highlight/note, optionally filtered by book."""
+def random_quote(
+    count: Annotated[int, typer.Argument(min=1, help="Number of random highlights to show.")] = 1,
+    book_query: Optional[str] = typer.Option(None, "--book", "-b", help="Filter by book ID, Title, or Author."),
+):
+    """Displays random highlights/notes, optionally filtered by book."""
     db: Session = next(get_db_session())
     book_id = None
     try:
@@ -161,16 +164,17 @@ def random_quote(book_query: Optional[str] = typer.Option(None, "--book", "-b", 
                 raise typer.Exit(1)
             book_id = book.id
         
-        clipping = clipping_service.get_random_clipping(db, book_id=book_id)
+        clippings = clipping_service.get_random_clippings(db, book_id=book_id, count=count)
         
-        if not clipping:
+        if not clippings:
             msg = "No clippings found"
             if book_query:
                 msg += f" for '{book_query}'"
             typer.echo(msg + ".")
             raise typer.Exit()
             
-        _display_clipping(clipping)
+        for clipping in clippings:
+            _display_clipping(clipping)
 
     finally:
         db.close()
